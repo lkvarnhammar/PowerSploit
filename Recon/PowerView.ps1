@@ -10949,6 +10949,9 @@ function Invoke-ShareFinder {
         $CheckShareAccess,
 
         [Switch]
+        $CheckShareWriteAccess,
+
+        [Switch]
         $CheckAdmin,
 
         [UInt32]
@@ -11061,18 +11064,38 @@ function Invoke-ShareFinder {
                         # skip this share if it's in the exclude list
                         elseif ($ExcludedShares -NotContains $NetName.ToUpper()) {
                             # see if we want to check access to this share
+                            $Readable = $Null
+                            $Writable = $Null
+
                             if($CheckShareAccess) {
                                 # check if the user has access to this path
+                                $Readable = $False
                                 try {
                                     $Null = [IO.Directory]::GetFiles($Path)
-                                    "\\$ComputerName\$NetName `t- $Remark"
+                                    # "\\$ComputerName\$NetName `t- $Remark"
+                                    $Readable = $True
                                 }
                                 catch {
                                     Write-Verbose "Error accessing path $Path : $_"
                                 }
                             }
-                            else {
-                                "\\$ComputerName\$NetName `t- $Remark"
+                            if ($CheckShareWriteAccess) {
+                                $Writable = $False
+                                try {
+                                    $TmpFile = $Path+"\_tmp31415"
+                                    [io.file]::OpenWrite($TmpFile).close()
+                                    [io.file]::Delete($TmpFile)
+                                    $Writable = $True
+                                }
+                                catch { }
+                            }
+                            New-Object PSObject -Property @{
+                                Computer = $ComputerName;
+                                Share = $Share.shi1_netname;
+                                Path = $Path;
+                                Readable = $Readable;
+                                Writable = $Writable;
+                                Remark = $Remark;
                             }
                         }
                     }
